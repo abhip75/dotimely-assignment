@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   timerContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     padding: 10,
     marginVertical: 5,
@@ -162,10 +162,12 @@ const styles = StyleSheet.create({
   },
   timerText: {
     fontSize: 18,
+    marginRight: 10,
   },
   button: {
     backgroundColor: '#007BFF',
-    padding: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 5,
     marginHorizontal: 5,
   },
