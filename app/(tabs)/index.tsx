@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, Button, TextInput, StyleSheet, FlatList, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
+// Define the type for each timer object
 interface Timer {
   id: number;
   time: number;
@@ -13,7 +14,7 @@ const MAX_TIMERS = 5;
 const HomeScreen = () => {
   const [timers, setTimers] = useState<Timer[]>([]);
   const [inputTime, setInputTime] = useState('');
-  const [limitReachedMessage, setLimitReachedMessage] = useState('');
+  const [isLimitReached, setIsLimitReached] = useState(false); // New state for limit message
 
   useEffect(() => {
     Notifications.requestPermissionsAsync().then(({ status }) => {
@@ -43,7 +44,7 @@ const HomeScreen = () => {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: 'Timer Finished',
-        body: `A timer has reached zero!`,
+        body: `Timer ${timerId} has reached zero!`,
       },
       trigger: null,
     });
@@ -51,10 +52,10 @@ const HomeScreen = () => {
 
   const addTimer = () => {
     if (timers.length >= MAX_TIMERS) {
-      setLimitReachedMessage('You can only add up to 5 timers.');
+      setIsLimitReached(true); // Set the limit message to show
       return;
     }
-    setLimitReachedMessage('');
+    setIsLimitReached(false); // Hide the limit message if adding a new timer
     const duration = parseInt(inputTime) || 60;
     setTimers([...timers, { id: Date.now(), time: duration, isRunning: false }]);
     setInputTime('');
@@ -80,30 +81,17 @@ const HomeScreen = () => {
     );
   };
 
-  const resetAllTimers = () => {
-    setTimers([]);
-    setLimitReachedMessage('');
-  };
-
-  const renderTimer = ({ item, index }: { item: Timer; index: number }) => (
+  const renderTimer = ({ item }: { item: Timer }) => (
     <View style={styles.timerContainer}>
-      <Text style={styles.timerText}>Timer {index + 1}: {item.time}s</Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => (item.isRunning ? pauseTimer(item.id) : startTimer(item.id))}
-      >
-        <Text style={styles.buttonText}>{item.isRunning ? 'Pause' : 'Start'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={() => resetTimer(item.id)}>
-        <Text style={styles.buttonText}>Reset</Text>
-      </TouchableOpacity>
+      <Text style={styles.timerText}>Timer: {item.time}s</Text>
+      <Button title={item.isRunning ? 'Pause' : 'Start'} onPress={() => (item.isRunning ? pauseTimer(item.id) : startTimer(item.id))} />
+      <Button title="Reset" onPress={() => resetTimer(item.id)} />
     </View>
   );
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>React Native Timer App</Text>
-      {limitReachedMessage ? <Text style={styles.limitReachedText}>{limitReachedMessage}</Text> : null}
       <TextInput
         style={styles.input}
         placeholder="Enter time in seconds"
@@ -111,17 +99,13 @@ const HomeScreen = () => {
         value={inputTime}
         onChangeText={setInputTime}
       />
-      <TouchableOpacity style={styles.addButton} onPress={addTimer}>
-        <Text style={styles.addButtonText}>Add Timer</Text>
-      </TouchableOpacity>
+      {isLimitReached && <Text style={styles.limitMessage}>You can only add up to 5 timers</Text>}
+      <Button title="Add Timer" onPress={addTimer} />
       <FlatList
         data={timers}
         renderItem={renderTimer}
         keyExtractor={(item) => item.id.toString()}
       />
-      <TouchableOpacity style={[styles.addButton, styles.resetButton]} onPress={resetAllTimers}>
-        <Text style={styles.addButtonText}>Reset All</Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -138,17 +122,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 20,
   },
-  limitReachedText: {
-    color: 'red',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
+  },
+  limitMessage: {
+    color: 'red', // Red color for limit message
+    marginBottom: 10,
+    textAlign: 'center',
   },
   timerContainer: {
     flexDirection: 'row',
@@ -162,29 +146,6 @@ const styles = StyleSheet.create({
   },
   timerText: {
     fontSize: 18,
-  },
-  button: {
-    backgroundColor: '#007BFF',
-    padding: 10,
-    borderRadius: 5,
-    marginHorizontal: 5,
-  },
-  buttonText: {
-    color: '#fff',
-  },
-  addButton: {
-    backgroundColor: '#28a745',
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  resetButton: {
-    backgroundColor: '#FF6347',
   },
 });
 
