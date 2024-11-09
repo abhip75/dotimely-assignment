@@ -1,70 +1,191 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Alert } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+interface Timer {
+  id: number;
+  time: number;
+  isRunning: boolean;
 }
 
+const MAX_TIMERS = 5;
+
+const HomeScreen = () => {
+  const [timers, setTimers] = useState<Timer[]>([]);
+  const [inputTime, setInputTime] = useState('');
+  const [limitReachedMessage, setLimitReachedMessage] = useState('');
+
+  useEffect(() => {
+    Notifications.requestPermissionsAsync().then(({ status }) => {
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Please enable notifications to receive timer alerts.');
+      }
+    });
+
+    const interval = setInterval(() => {
+      setTimers((prevTimers) =>
+        prevTimers.map((timer) => {
+          if (timer.isRunning && timer.time > 0) {
+            return { ...timer, time: timer.time - 1 };
+          } else if (timer.time === 0 && timer.isRunning) {
+            sendNotification(timer.id);
+            return { ...timer, isRunning: false };
+          }
+          return timer;
+        })
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const sendNotification = async (timerId: number) => {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Timer Finished',
+        body: `A timer has reached zero!`,
+      },
+      trigger: null,
+    });
+  };
+
+  const addTimer = () => {
+    if (timers.length >= MAX_TIMERS) {
+      setLimitReachedMessage('You can only add up to 5 timers.');
+      return;
+    }
+    setLimitReachedMessage('');
+    const duration = parseInt(inputTime) || 60;
+    setTimers([...timers, { id: Date.now(), time: duration, isRunning: false }]);
+    setInputTime('');
+  };
+
+  const startTimer = (id: number) => {
+    setTimers((prevTimers) =>
+      prevTimers.map((timer) => (timer.id === id ? { ...timer, isRunning: true } : timer))
+    );
+  };
+
+  const pauseTimer = (id: number) => {
+    setTimers((prevTimers) =>
+      prevTimers.map((timer) => (timer.id === id ? { ...timer, isRunning: false } : timer))
+    );
+  };
+
+  const resetTimer = (id: number) => {
+    setTimers((prevTimers) =>
+      prevTimers.map((timer) =>
+        timer.id === id ? { ...timer, time: 0, isRunning: false } : timer
+      )
+    );
+  };
+
+  const resetAllTimers = () => {
+    setTimers([]);
+    setLimitReachedMessage('');
+  };
+
+  const renderTimer = ({ item, index }: { item: Timer; index: number }) => (
+    <View style={styles.timerContainer}>
+      <Text style={styles.timerText}>Timer {index + 1}: {item.time}s</Text>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => (item.isRunning ? pauseTimer(item.id) : startTimer(item.id))}
+      >
+        <Text style={styles.buttonText}>{item.isRunning ? 'Pause' : 'Start'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.button} onPress={() => resetTimer(item.id)}>
+        <Text style={styles.buttonText}>Reset</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>React Native Timer App</Text>
+      {limitReachedMessage ? <Text style={styles.limitReachedText}>{limitReachedMessage}</Text> : null}
+      <TextInput
+        style={styles.input}
+        placeholder="Enter time in seconds"
+        keyboardType="numeric"
+        value={inputTime}
+        onChangeText={setInputTime}
+      />
+      <TouchableOpacity style={styles.addButton} onPress={addTimer}>
+        <Text style={styles.addButtonText}>Add Timer</Text>
+      </TouchableOpacity>
+      <FlatList
+        data={timers}
+        renderItem={renderTimer}
+        keyExtractor={(item) => item.id.toString()}
+      />
+      <TouchableOpacity style={[styles.addButton, styles.resetButton]} onPress={resetAllTimers}>
+        <Text style={styles.addButtonText}>Reset All</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 20,
+  },
+  limitReachedText: {
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 5,
+  },
+  timerContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    padding: 10,
+    marginVertical: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  timerText: {
+    fontSize: 18,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  button: {
+    backgroundColor: '#007BFF',
+    padding: 10,
+    borderRadius: 5,
+    marginHorizontal: 5,
+  },
+  buttonText: {
+    color: '#fff',
+  },
+  addButton: {
+    backgroundColor: '#28a745',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  resetButton: {
+    backgroundColor: '#FF6347',
   },
 });
+
+export default HomeScreen;
