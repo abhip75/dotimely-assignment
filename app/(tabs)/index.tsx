@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { Audio } from 'expo-av';
 
 interface Timer {
   id: number;
@@ -14,6 +15,7 @@ const HomeScreen = () => {
   const [timers, setTimers] = useState<Timer[]>([]);
   const [inputTime, setInputTime] = useState('');
   const [limitReachedMessage, setLimitReachedMessage] = useState('');
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
 
   useEffect(() => {
     Notifications.requestPermissionsAsync().then(({ status }) => {
@@ -29,6 +31,7 @@ const HomeScreen = () => {
             return { ...timer, time: timer.time - 1 };
           } else if (timer.time === 0 && timer.isRunning) {
             sendNotification(timer.id);
+            playSound();
             return { ...timer, isRunning: false };
           }
           return timer;
@@ -47,6 +50,14 @@ const HomeScreen = () => {
       },
       trigger: null,
     });
+  };
+
+  const playSound = async () => {
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../assets/alert-sound.wav')
+    );
+    setSound(sound);
+    await sound.playAsync();
   };
 
   const addTimer = () => {
