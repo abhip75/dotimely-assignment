@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { Audio } from 'expo-av'; 
+import { Audio } from 'expo-av';
 
 interface Timer {
   id: number;
@@ -10,6 +10,8 @@ interface Timer {
 }
 
 const MAX_TIMERS = 5;
+
+const PREDEFINED_TIMES = [300, 600, 900]; // predefined times
 
 const HomeScreen = () => {
   const [timers, setTimers] = useState<Timer[]>([]);
@@ -71,6 +73,7 @@ const HomeScreen = () => {
     });
   };
 
+  // validations
   const isValidInput = () => {
     const duration = parseInt(inputTime);
 
@@ -87,19 +90,21 @@ const HomeScreen = () => {
     return true;
   };
 
-  const addTimer = () => {
-
-    if (!isValidInput()) return;
-
-    
+  const addTimer = (duration: number) => {
     if (timers.length >= MAX_TIMERS) {
       setLimitReachedMessage('You can only add up to 5 timers.');
       return;
     }
     setLimitReachedMessage('');
-    
-    const duration = parseInt(inputTime) || 60;
+
     setTimers([...timers, { id: Date.now(), time: duration, isRunning: false }]);
+  };
+
+  const handleAddCustomTimer = () => {
+    if (!isValidInput()) return;
+
+    const duration = parseInt(inputTime);
+    addTimer(duration);
     setInputTime('');
   };
 
@@ -147,6 +152,15 @@ const HomeScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>React Native Timer App</Text>
       {limitReachedMessage ? <Text style={styles.limitReachedText}>{limitReachedMessage}</Text> : null}
+
+      <View style={styles.predefinedContainer}>
+        {PREDEFINED_TIMES.map((time) => (
+          <TouchableOpacity key={time} style={styles.predefinedButton} onPress={() => addTimer(time)}>
+            <Text style={styles.buttonText}>{time / 60} min</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <TextInput
         style={styles.input}
         placeholder="Enter time in seconds"
@@ -154,9 +168,10 @@ const HomeScreen = () => {
         value={inputTime}
         onChangeText={setInputTime}
       />
-      <TouchableOpacity style={styles.addButton} onPress={addTimer}>
-        <Text style={styles.addButtonText}>Add Timer</Text>
+      <TouchableOpacity style={styles.addButton} onPress={handleAddCustomTimer}>
+        <Text style={styles.addButtonText}>Add Custom Timer</Text>
       </TouchableOpacity>
+
       <FlatList
         data={timers}
         renderItem={renderTimer}
@@ -192,6 +207,18 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
+  },
+  predefinedContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginVertical: 10,
+  },
+  predefinedButton: {
+    backgroundColor: '#007BFF',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+    marginHorizontal: 5,
   },
   timerContainer: {
     flexDirection: 'row',
