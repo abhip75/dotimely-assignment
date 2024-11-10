@@ -71,7 +71,27 @@ const HomeScreen = () => {
     });
   };
 
+  const isValidInput = () => {
+    const duration = parseInt(inputTime);
+
+    if (!inputTime.trim()) {
+      Alert.alert('Invalid Input', 'Please enter a time.');
+      return false;
+    }
+
+    if (isNaN(duration) || duration <= 0) {
+      Alert.alert('Invalid Input', 'Please enter a positive number for time.');
+      return false;
+    }
+
+    return true;
+  };
+
   const addTimer = () => {
+
+    if (!isValidInput()) return;
+
+    
     if (timers.length >= MAX_TIMERS) {
       setLimitReachedMessage('You can only add up to 5 timers.');
       return;
