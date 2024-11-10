@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, FlatList, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { Audio } from 'expo-av';
+import { Audio } from 'expo-av'; 
 
 interface Timer {
   id: number;
@@ -15,9 +15,20 @@ const HomeScreen = () => {
   const [timers, setTimers] = useState<Timer[]>([]);
   const [inputTime, setInputTime] = useState('');
   const [limitReachedMessage, setLimitReachedMessage] = useState('');
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<any>(null);
 
   useEffect(() => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => {
+        await playAlertSound();
+        return {
+          shouldShowAlert: true,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        };
+      },
+    });
+
     Notifications.requestPermissionsAsync().then(({ status }) => {
       if (status !== 'granted') {
         Alert.alert('Permission required', 'Please enable notifications to receive timer alerts.');
@@ -31,7 +42,6 @@ const HomeScreen = () => {
             return { ...timer, time: timer.time - 1 };
           } else if (timer.time === 0 && timer.isRunning) {
             sendNotification(timer.id);
-            playSound();
             return { ...timer, isRunning: false };
           }
           return timer;
@@ -42,22 +52,23 @@ const HomeScreen = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const sendNotification = async (timerId: number) => {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Timer Finished',
-        body: `A timer has reached zero!`,
-      },
-      trigger: null,
-    });
-  };
-
-  const playSound = async () => {
+  // Play alert sound
+  const playAlertSound = async () => {
     const { sound } = await Audio.Sound.createAsync(
       require('../../assets/alert-sound.wav')
     );
     setSound(sound);
     await sound.playAsync();
+  };
+
+  const sendNotification = async (timerId: number) => {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Timer Finished',
+        body: `Timer ${timerId} has reached zero!`,
+      },
+      trigger: null,
+    });
   };
 
   const addTimer = () => {
@@ -66,6 +77,7 @@ const HomeScreen = () => {
       return;
     }
     setLimitReachedMessage('');
+    
     const duration = parseInt(inputTime) || 60;
     setTimers([...timers, { id: Date.now(), time: duration, isRunning: false }]);
     setInputTime('');
